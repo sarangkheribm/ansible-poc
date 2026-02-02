@@ -1,0 +1,58 @@
+name: Ansible – Run on Update
+
+on:
+  push:
+    # (Option A) Only run if files under ansible/ changed
+    paths:
+      - 'ansible/**'
+      - '.github/workflows/ansible-update.yml'
+  pull_request:
+    paths:
+      - 'ansible/**'
+      - '.github/workflows/ansible-update.yml'
+
+jobs:
+  run-ansible:
+    runs-on: ubuntu-latest
+
+    # (Option B) Additionally gate by commit message containing 'update'
+    # Comment out this 'if' if you only want path-based filtering.
+    if: |
+      github.event_name == 'pull_request' ||
+      contains(github.event.head_commit.message, 'update') ||
+      contains(github.event.head_commit.message, 'Update') ||
+      contains(github.event.head_commit.message, 'UPDATE')
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install Ansible
+        run: |
+          python -m pip install --upgrade pip
+          pip install "ansible>=9"
+
+      - name: Show Ansible version
+        run: ansible --version
+
+      - name: Validate inventory & playbook exist
+        run: |
+          test -f ansible/inventory
+          test -f ansible/ping_localhost.yml
+
+      - name: Run Ansible – Ping localhost
+        run: |
+          ansible-playbook -i ansible/inventory ansible/ping_localhost.yml -vv
