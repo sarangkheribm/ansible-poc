@@ -1,0 +1,7 @@
+---
+- name: Ping localhost to verify Ansible works
+  hosts: local
+  gather_facts: false
+  tasks:
+    - name: Ping localhost
+      ansible.builtin.ping:
